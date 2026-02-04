@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { SalesRecord } from './types';
 import { INITIAL_DATA } from './constants';
-import { StatsOverview } from './StatsOverview';
-import { Charts } from './Charts';
-import { StaffPredictor } from './StaffPredictor';
-import { AIAdvisor } from './AIAdvisor';
-import { DataEntry } from './DataEntry';
+import { StatsOverview } from './components/StatsOverview';
+import { Charts } from './components/Charts';
+import { StaffPredictor } from './components/StaffPredictor';
+import { AIAdvisor } from './components/AIAdvisor';
+import { DataEntry } from './components/DataEntry';
 
 function App() {
   const [data, setData] = useState<SalesRecord[]>(INITIAL_DATA);
