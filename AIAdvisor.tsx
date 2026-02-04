@@ -1,3 +1,20 @@
+const makeDemoSections = () => {
+  const variants = [
+    {
+      environment: "Footfall is strong around commute + early evening. Peak demand compresses into short windows—queue risk rises fast if host/runner handoffs lag.",
+      logistics: "Operational friction is mainly at pass → runner and table turns. Small pre-peak resets (stock, glassware, POS readiness) reduce peak drag.",
+      opportunities: "Shift 1 FOH start 30–45 mins earlier Tue–Thu, add a 2-hour runner micro-shift, and pilot 2 add-on scripts to lift attach rate during peak.",
+      tactical: "Run a 7-day test: tighten pre-peak checklist, assign a dedicated runner during the busiest 90 mins, and track ticket time + abandonment."
+    },
+    {
+      environment: "Weekdays show lunch intent spikes; weekends shift to groups. Customer decisions are faster when bundles are visible and staff scripts are consistent.",
+      logistics: "Capacity bottleneck appears in short bursts, not all shift. Micro-shifts outperform adding full headcount for labour efficiency.",
+      opportunities: "Introduce a peak-only support role, pre-batch top sellers, and use a 10-second upsell line to increase second-item conversion.",
+      tactical: "Keep labour hours flat: reallocate coverage into the top 2 peak windows and monitor sales per labour hour + guest wait time."
+    }
+  ]
+  return variants[Math.floor(Math.random() * variants.length)]
+}
 import React, { useState, useMemo } from 'react';
 import { SalesRecord, AIRecommendation } from './types';
 import { getAIStaffingAdvice } from './geminiService';
@@ -16,18 +33,43 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ history, location, targetD
   const [error, setError] = useState<string | null>(null);
 
   const handleConsultAI = async () => {
-    if (!location) { alert("Please specify location."); return; }
-    setLoading(true); setError(null);
-    try {
-      const result = await getAIStaffingAdvice(history, location, targetDate, currentBookings);
-      setAdvice(result);
-      if (onAIResult) onAIResult(result);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  if (!location) {
+    alert("Please specify location.")
+    return
+  }
+
+  setLoading(true)
+  setError(null)
+
+  try {
+    const apiKey = import.meta.env.VITE_GOOGLE_API_KEY
+
+    // ✅ HR DEMO MODE: no API key → simulated advice
+    if (!apiKey) {
+      const demoResult = makeDemoAdvice(location)
+      setAdvice(demoResult)
+      if (onAIResult) onAIResult(demoResult)
+      return
     }
-  };
+
+    // ✅ LIVE MODE: real AI call
+    const result = await getAIStaffingAdvice(
+      history,
+      location,
+      targetDate,
+      currentBookings
+    )
+
+    setAdvice(result)
+    if (onAIResult) onAIResult(result)
+
+  } catch (err: any) {
+    setError(err?.message ?? "Something went wrong.")
+  } finally {
+    setLoading(false)
+  }
+}
+
 
   const cleanText = (text: string) => text.replace(/\*\*/g, '').replace(/\*/g, '•').trim();
 
