@@ -1,28 +1,35 @@
-# 📊 AuraOps Intelligence | 餐飲人力與銷售關聯分析工具
+# AuraOps Intelligence: FOH Staffing Optimizer
 
-這是一個專為餐飲業總經理 (GM) 與營運主管設計的 AI 驅動決策工具。透過分析歷史銷售數據、排班人力，並結合 Google Gemini 的即時環境感知技術，協助達成最精準的人力配置。
-
-## 🌟 核心功能
-
-- **AI 戰術報告 (Tactical Report)**：利用 Google Search 技術，自動抓取店鋪周邊的即時氣象、交通狀況、以及重大活動（如演唱會、賽事），判斷對人流的影響。
-- **人力預測引擎 (Staffing Predictor)**：基於歷史「散客/預約比」與 AI 修正指數，自動推算午/晚餐的最佳排班人數。
-- **數據分析看板 (Operational Analytics)**：視覺化展示「人均營收 (Rev/Staff)」與「平均單價 (ASPH)」，一眼看出營運效率瓶頸。
-- **離線支援與響應式設計**：支援手機與平板操作，方便外場主管隨時查看。
-
-## 🚀 部署說明 (開發者參考)
-
-本專案採用 React + Tailwind CSS + Gemini API 架構。
-
-1. **環境變數設定**：
-   在部署平台（如 Vercel）中新增 `API_KEY` 變數。
-   
-2. **數據架構**：
-   主要邏輯位於 `StaffPredictor.tsx`，透過 `Gemini-3-Pro` 模型進行進階邏輯推理。
-
-## 📈 運作邏輯說明 (給 GM)
-
-- **環境敏感度調整**：AI 會針對不同餐期自動調整敏感度（例如：午餐人流通常較穩定，受天氣影響較小；晚餐則會依據活動進行大幅修正）。
-- **飽和抑制邏輯**：當預約人數超過店鋪容量的 80% 時，系統會自動下修「預期散客數」，以符合實務現場載能。
+**AuraOps Intelligence** is a world-class strategic platform designed for General Managers (GMs) in the hospitality sector. It leverages historical data patterns and real-time AI grounding to solve the most critical challenge in restaurant operations.
 
 ---
-*由 AuraOps OS 戰略情報平台提供技術支援。*
+
+## ⚡ Quick Start: Fix API Issues on GitHub Pages
+
+If the Strategic Report is offline, follow these 3 steps:
+
+1.  **Get Key**: Obtain a Gemini API Key from [Google AI Studio](https://aistudio.google.com/).
+2.  **Add Secret**: 
+    *   In GitHub: **Settings** > **Secrets and variables** > **Actions**.
+    *   Create **New repository secret**.
+    *   Name: `API_KEY`. Value: [Paste your key here].
+3.  **Deploy**: Push any code change. The included `.github/workflows/deploy.yml` will automatically build the app and securely inject your key.
+
+---
+
+## ☁️ Google Cloud (GCP) Deployment Guide
+
+For enterprise-grade security using GCP:
+
+### Option A: Firebase Hosting + Cloud Build (Recommended)
+1.  **Store the Secret:** Go to **GCP Secret Manager** and create a secret named `GEMINI_API_KEY`.
+2.  **Configure Build:** In your `cloudbuild.yaml`, inject the secret using `gcloud secrets versions access`.
+
+---
+
+## 🚀 Core Features
+1. **Predictive Staffing Engine:** Historical pattern analysis.
+2. **AI Strategic Tactical Report:** Real-time web grounding via Gemini 3.0 Flash.
+
+---
+*Designed for elite hospitality management.* **AuraOps OS v3.1.2**
