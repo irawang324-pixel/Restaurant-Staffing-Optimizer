@@ -1,16 +1,15 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { SalesRecord } from "../types";
+import { SalesRecord } from "../types.ts";
 
-/**
- * Service to consult AI for strategic staffing advice.
- * Uses gemini-3-flash-preview for high performance and live grounding.
- */
 export const getAIStaffingAdvice = async (history: SalesRecord[], location: string, targetDate: string, bookings: number) => {
+  // Vite 在打包時會將此處替換為真正的字串
   const apiKey = process.env.API_KEY;
-  
-  if (!apiKey) {
-    throw new Error("API Key is missing from the environment.");
+
+  if (!apiKey || apiKey.length < 5) {
+    throw new Error(
+      "API_KEY is not configured. Please add it to your GitHub Secrets and re-deploy."
+    );
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -19,27 +18,22 @@ export const getAIStaffingAdvice = async (history: SalesRecord[], location: stri
   const dayName = new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(dateObj);
 
   const prompt = `
-    Role: Senior Hospitality Operations Consultant.
-    Context: Analyze staffing needs for a restaurant in "${location}" for ${targetDate} (${dayName}).
-    Confirmed Bookings: ${bookings} guests.
+    Role: Strategic Operations Consultant for Hospitality.
+    Location: "${location}"
+    Service Date: ${targetDate} (${dayName})
+    Current Bookings: ${bookings} guests.
 
-    Tasks:
-    1. Search for local events (concerts, games), weather forecast, and transport issues near ${location}.
-    2. Evaluate how these factors will impact "Walk-in" traffic.
-    3. Provide a clear FOH (Front of House) staffing strategy.
+    Task: Use Google Search to analyze real-time local events, weather, and transport disruptions.
+    Provide a concise tactical report for the manager.
 
-    MANDATORY: You must conclude your report with a footfall index multiplier in this format: [FOOTFALL_INDEX: X.X]
-    - 1.0 = Baseline
-    - < 1.0 = Reduced traffic expected
-    - > 1.0 = Surge expected
+    CRITICAL: You MUST end with this tag: [FOOTFALL_INDEX: X.X] 
+    (1.0 is normal, 1.2 is 20% busier, 0.8 is 20% quieter).
 
-    Sections:
-    [ENVIRONMENT] Weather & Vibes.
-    [LOGISTICS] Transport & Accessibility.
-    [OPPORTUNITIES] Events or holidays that could drive sales.
-    [TACTICAL_ADVICE] Staffing and service prep recommendations.
-
-    Tone: Sharp, data-driven, executive summary style.
+    Report Sections:
+    [WEATHER]
+    [TRANSPORT]
+    [EVENTS]
+    [ADVICE] (FOH Staffing recommendation)
   `;
 
   try {
@@ -48,13 +42,10 @@ export const getAIStaffingAdvice = async (history: SalesRecord[], location: stri
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        temperature: 0.7,
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Strategic analysis failed to generate.");
-
+    const text = response.text || "";
     const indexMatch = text.match(/\[FOOTFALL_INDEX:\s*(\d+\.?\d*)\]/);
     const footfallIndex = indexMatch ? parseFloat(indexMatch[1]) : 1.0;
 
@@ -69,7 +60,7 @@ export const getAIStaffingAdvice = async (history: SalesRecord[], location: stri
       footfallIndex
     };
   } catch (error: any) {
-    console.error("AI Strategic Error:", error);
-    throw new Error(error.message || "The intelligence engine is currently recalibrating.");
+    console.error("AI Error:", error);
+    throw new Error(error.message || "AI Synchronization failed.");
   }
 };
