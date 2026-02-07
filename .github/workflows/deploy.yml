@@ -5,12 +5,17 @@ on:
   push:
     branches:
       - main
+      - master
+  workflow_dispatch: # 允許手動從 Actions 分頁觸發
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build-and-deploy:
+    concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
@@ -19,9 +24,9 @@ jobs:
       - name: Install and Build 🔧
         run: |
           npm install
-          # Vite 會在 build 時讀取這個環境變數並透過 vite.config.ts 注入
           npm run build
         env:
+          # 非常重要：Vite build 時必須有這個變數，它才會被「烤」進靜態檔案裡
           API_KEY: ${{ secrets.API_KEY }}
 
       - name: Deploy 🚀
