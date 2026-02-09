@@ -5,7 +5,7 @@ import { SalesRecord } from "./types";
  * Senior Hospitality Operations Consultant Service - Using Gemini 3 Flash with Search Grounding
  */
 export const getAIStaffingAdvice = async (history: SalesRecord[], location: string, targetDate: string, bookings: number) => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
   if (!apiKey) throw new Error("API Key is missing. Please check your environment variables.");
 
   const ai = new GoogleGenAI({ apiKey });
