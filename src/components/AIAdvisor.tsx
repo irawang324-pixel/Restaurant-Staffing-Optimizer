@@ -1,94 +1,90 @@
 import React, { useMemo, useState } from "react";
-import type { SalesRecord, AIRecommendation } from "./types";
-import { getAIStaffingAdvice } from "./geminiService";
+import type { SalesRecord, AIRecommendation } from "../services/types";
+import { getAIStaffingAdvice } from "../services/geminiService";
 
-/** Demo sections generator (your original idea, cleaned) */
+/* -------------------- DEMO FALLBACK -------------------- */
+
 const makeDemoSections = () => {
   const variants = [
     {
       environment:
-        "Footfall is strong around commute + early evening. Peak demand compresses into short windows—queue risk rises fast if host/runner handoffs lag.",
+        "Footfall is strong around commute + early evening. Peak demand compresses into short windows—queue risk rises fast if handoffs lag.",
       logistics:
-        "Operational friction is mainly at pass → runner and table turns. Small pre-peak resets (stock, glassware, POS readiness) reduce peak drag.",
+        "Friction appears at pass → runner and table turns. Small pre-peak resets reduce drag during peak.",
       opportunities:
-        "Shift 1 FOH start 30–45 mins earlier Tue–Thu, add a 2-hour runner micro-shift, and pilot 2 add-on scripts to lift attach rate during peak.",
+        "Start 1 FOH 30–45 mins earlier Tue–Thu, add a 2-hour runner micro-shift, pilot 2 add-on scripts.",
       tactical:
-        "Run a 7-day test: tighten pre-peak checklist, assign a dedicated runner during the busiest 90 mins, and track ticket time + abandonment.",
+        "Run a 7-day test: tighter pre-peak checklist, dedicated runner for busiest 90 mins, track ticket time."
     },
     {
       environment:
-        "Weekdays show lunch intent spikes; weekends shift to groups. Customer decisions are faster when bundles are visible and staff scripts are consistent.",
+        "Weekdays show lunch intent spikes; weekends skew to groups. Clear bundles speed decisions.",
       logistics:
-        "Capacity bottleneck appears in short bursts, not all shift. Micro-shifts outperform adding full headcount for labour efficiency.",
+        "Bottlenecks come in bursts. Micro-shifts outperform adding full headcount.",
       opportunities:
-        "Introduce a peak-only support role, pre-batch top sellers, and use a 10-second upsell line to increase second-item conversion.",
+        "Peak-only support role, pre-batch top sellers, 10-second upsell line.",
       tactical:
-        "Keep labour hours flat: reallocate coverage into the top 2 peak windows and monitor sales per labour hour + guest wait time.",
-    },
+        "Keep labour flat: reallocate into top 2 windows, monitor SPLH + wait time."
+    }
   ];
   return variants[Math.floor(Math.random() * variants.length)];
 };
+
+/* -------------------- UTILITIES -------------------- */
 
 const cleanText = (text: string) =>
   (text || "")
     .replace(/\r/g, "")
     .replace(/\*\*/g, "")
     .replace(/\*/g, "•")
-    .replace(/[ \t]+\n/g, "\n")
     .trim();
 
 /**
- * Tolerant section parser:
- * - Works even if tags are missing / reordered / extra whitespace
- * - Accepts both [ENVIRONMENT] and ENVIRONMENT: style (just in case)
+ * Very tolerant parser:
+ * - If tags exist → split
+ * - If tags missing → dump everything into tactical
  */
 const parseSections = (raw: string) => {
   const txt = cleanText(raw);
 
-  const norm = txt
-    .replace(/\[ENVIRONMENT\]/gi, "[ENVIRONMENT]")
-    .replace(/\[LOGISTICS\]/gi, "[LOGISTICS]")
-    .replace(/\[OPPORTUNITIES\]/gi, "[OPPORTUNITIES]")
-    .replace(/\[TACTICAL_ADVICE\]/gi, "[TACTICAL_ADVICE]")
+  const normalize = txt
     .replace(/\bENVIRONMENT\b\s*:/gi, "[ENVIRONMENT]")
     .replace(/\bLOGISTICS\b\s*:/gi, "[LOGISTICS]")
     .replace(/\bOPPORTUNITIES\b\s*:/gi, "[OPPORTUNITIES]")
     .replace(/\bTACTICAL_ADVICE\b\s*:/gi, "[TACTICAL_ADVICE]");
 
-  const getBetween = (start: string, end?: string) => {
-    const sIdx = norm.indexOf(start);
-    if (sIdx === -1) return "";
-    const from = sIdx + start.length;
-    if (!end) return norm.slice(from).trim();
-    const eIdx = norm.indexOf(end, from);
-    if (eIdx === -1) return norm.slice(from).trim();
-    return norm.slice(from, eIdx).trim();
+  const slice = (start: string, end?: string) => {
+    const s = normalize.indexOf(start);
+    if (s === -1) return "";
+    const from = s + start.length;
+    if (!end) return normalize.slice(from).trim();
+    const e = normalize.indexOf(end, from);
+    return e === -1 ? normalize.slice(from).trim() : normalize.slice(from, e).trim();
   };
 
-  const environment = getBetween("[ENVIRONMENT]", "[LOGISTICS]");
-  const logistics = getBetween("[LOGISTICS]", "[OPPORTUNITIES]");
-  const opportunities = getBetween("[OPPORTUNITIES]", "[TACTICAL_ADVICE]");
-  const tactical = getBetween("[TACTICAL_ADVICE]");
+  const environment = slice("[ENVIRONMENT]", "[LOGISTICS]");
+  const logistics = slice("[LOGISTICS]", "[OPPORTUNITIES]");
+  const opportunities = slice("[OPPORTUNITIES]", "[TACTICAL_ADVICE]");
+  const tactical = slice("[TACTICAL_ADVICE]");
 
-  // Fallback strategy:
-  // - If everything empty, show whole text in tactical so user sees something
   if (!environment && !logistics && !opportunities && !tactical) {
     return {
       environment: "",
       logistics: "",
       opportunities: "",
-      tactical: norm,
+      tactical: normalize
     };
   }
 
-  // If tactical missing but we have some content, also fallback to whole doc at least
   return {
     environment,
     logistics,
     opportunities,
-    tactical: tactical || norm,
+    tactical: tactical || normalize
   };
 };
+
+/* -------------------- COMPONENT -------------------- */
 
 interface AIAdvisorProps {
   history: SalesRecord[];
@@ -103,7 +99,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({
   location,
   targetDate,
   currentBookings,
-  onAIResult,
+  onAIResult
 }) => {
   const [advice, setAdvice] = useState<AIRecommendation | null>(null);
   const [loading, setLoading] = useState(false);
@@ -119,16 +115,19 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({
     setError(null);
 
     try {
-      // ✅ Always try live AI first (key handling is inside geminiService.ts)
-      const result = await getAIStaffingAdvice(history, location, targetDate, currentBookings);
+      const result = await getAIStaffingAdvice(
+        history,
+        location,
+        targetDate,
+        currentBookings
+      );
 
-      // Debug hook (keep or remove)
       console.log("AI RESULT:", result);
       console.log("AI RAW:", result?.rawResponse);
 
-      // If Gemini returned empty text for any reason, fallback to demo
-      const raw = (result as any)?.rawResponse ?? "";
-      if (!raw || cleanText(raw).length < 10) {
+      const raw = result?.rawResponse || "";
+
+      if (!raw || raw.length < 20) {
         const demo = makeDemoSections();
         const demoResult: AIRecommendation = {
           rawResponse:
@@ -137,7 +136,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({
             `[OPPORTUNITIES]\n${demo.opportunities}\n\n` +
             `[TACTICAL_ADVICE]\n${demo.tactical}\n`,
           sources: [],
-          footfallIndex: 1.0,
+          footfallIndex: 1
         };
         setAdvice(demoResult);
         onAIResult?.(demoResult);
@@ -146,10 +145,10 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({
 
       setAdvice(result);
       onAIResult?.(result);
+
     } catch (err: any) {
-      // ✅ If live fails, fallback to demo but still show error message
-      console.error("AI Error:", err);
-      setError(err?.message ?? "Something went wrong.");
+      console.error(err);
+      setError(err?.message ?? "AI service unavailable.");
 
       const demo = makeDemoSections();
       const demoResult: AIRecommendation = {
@@ -159,7 +158,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({
           `[OPPORTUNITIES]\n${demo.opportunities}\n\n` +
           `[TACTICAL_ADVICE]\n${demo.tactical}\n`,
         sources: [],
-        footfallIndex: 1.0,
+        footfallIndex: 1
       };
       setAdvice(demoResult);
       onAIResult?.(demoResult);
@@ -176,97 +175,60 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({
   const InfoCard = ({
     title,
     content,
-    icon,
     color,
+    icon
   }: {
     title: string;
     content: string;
-    icon: React.ReactNode;
     color: string;
+    icon: React.ReactNode;
   }) => (
-    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full hover:shadow-md transition-all">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${color} text-white`}>
+    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm h-full">
+      <div className={`w-10 h-10 mb-4 rounded-xl flex items-center justify-center ${color} text-white`}>
         {icon}
       </div>
       <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
         {title}
       </h5>
-      <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">
-        {content?.trim() ? content : "Analyzing environmental signals..."}
+      <p className="text-xs text-slate-600 whitespace-pre-wrap">
+        {content || "Analyzing signals…"}
       </p>
     </div>
   );
 
   return (
     <div className="bg-slate-50 rounded-[3rem] p-8 lg:p-12 border border-slate-200">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12">
+      <div className="flex justify-between items-center mb-12">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter text-slate-900 mb-2">
+          <h2 className="text-4xl font-black">
             Grounding <span className="text-indigo-600">Intelligence</span>
           </h2>
-          <p className="text-slate-500 font-medium">
-            Live context analysis for{" "}
-            <span className="text-indigo-600 font-bold">{location}</span>
+          <p className="text-slate-500">
+            Live context analysis for <b>{location}</b>
           </p>
         </div>
 
         <button
           onClick={handleConsultAI}
           disabled={loading}
-          className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50"
+          className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest disabled:opacity-50"
         >
-          {loading ? "Syncing..." : "Fetch Tactical Audit"}
+          {loading ? "Syncing…" : "Fetch Tactical Audit"}
         </button>
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold mb-6">
+        <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold">
           {error}
         </div>
       )}
 
       {sections && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4">
-          <InfoCard
-            color="bg-blue-500"
-            title="Environment"
-            content={sections.environment}
-            icon={
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-              </svg>
-            }
-          />
-          <InfoCard
-            color="bg-indigo-500"
-            title="Logistics"
-            content={sections.logistics}
-            icon={
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            }
-          />
-          <InfoCard
-            color="bg-amber-500"
-            title="Opportunities"
-            content={sections.opportunities}
-            icon={
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            }
-          />
-          <InfoCard
-            color="bg-emerald-500"
-            title="GM Advice"
-            content={sections.tactical}
-            icon={
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            }
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <InfoCard title="Environment" content={sections.environment} color="bg-blue-500" icon={"☁️"} />
+          <InfoCard title="Logistics" content={sections.logistics} color="bg-indigo-500" icon={"🧭"} />
+          <InfoCard title="Opportunities" content={sections.opportunities} color="bg-amber-500" icon={"📈"} />
+          <InfoCard title="GM Advice" content={sections.tactical} color="bg-emerald-500" icon={"🛡️"} />
         </div>
       )}
     </div>
