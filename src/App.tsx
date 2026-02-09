@@ -17,7 +17,7 @@ function App() {
   const [isApiConfigured, setIsApiConfigured] = useState(false);
 
   useEffect(() => {
-    const key = process.env.API_KEY;
+   const key = import.meta.env.VITE_API_KEY as string | undefined;
     if (key && key.length > 5) {
       setIsApiConfigured(true);
     }
